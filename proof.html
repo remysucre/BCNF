@@ -172,230 +172,537 @@
   </style>
 </head>
 <body>
-<h1 id="bcnf-for-singleton-fds-a-reachability-check-on-attributes">BCNF
-for singleton FDs: a reachability check on attributes</h1>
+<h1 id="key-centric-bcnf-decomposition">Key-centric BCNF
+decomposition</h1>
 <h2 id="motivation">Motivation</h2>
-<p>The textbook BCNF check considers every nontrivial FD in <span
-class="math inline"><em>F</em><sup>+</sup></span>, which in principle
-requires iterating over the powerset of attributes for the LHS. In a
-classroom or exam setting this is painful to do by hand. The result
-below shows that when the input FD set <span
-class="math inline"><em>F</em></span> is <strong>singleton</strong> (one
-attribute on each side), BCNF status reduces to a check on
-<em>attributes</em>: for each attribute <span
-class="math inline"><em>A</em></span>, does <span
-class="math inline"><em>A</em></span>’s reachable set in the FD graph
-equal <span class="math inline">{<em>A</em>}</span> or the whole schema?
-The same check applies to every sub-relation during decomposition, using
-the original FD graph throughout — no projection, no acyclicity, no
-powerset. The student works entirely with one picture: the FD graph
-<span class="math inline"><em>G</em><sub><em>F</em></sub></span>.</p>
+<p>The textbook presentation of BCNF decomposition is
+<strong>FD-centric</strong>: look for a nontrivial FD <span
+class="math inline"><em>X</em> → <em>Y</em></span> with a non-superkey
+LHS, split on it, recurse. This forces the student to enumerate FDs
+(including derived ones from <span
+class="math inline"><em>F</em><sup>+</sup></span>), it lets extraneous
+attributes sneak into the LHS and inflate the split (producing
+redundancy), and for general <span class="math inline"><em>F</em></span>
+the BCNF check in principle requires iterating over every possible
+LHS.</p>
+<p>This note argues for a cleaner framing:
+<strong>key-centric</strong>.</p>
+<p>Every BCNF violation is really a <em>missing key</em>. It is a set of
+attributes <span class="math inline"><em>X</em></span> that (i)
+determines something non-trivially, but (ii) is not already a superkey.
+The decomposition step is not about the FD; it is about <span
+class="math inline"><em>X</em></span>. Splitting <span
+class="math inline"><em>R</em></span> into <span
+class="math inline"><em>R</em><sub>1</sub> = <em>X</em><sup>+</sup></span>
+and <span
+class="math inline"><em>R</em><sub>2</sub> = (𝒰 \ <em>X</em><sup>+</sup>) ∪ <em>X</em></span>
+<em>promotes <span class="math inline"><em>X</em></span> to a key</em>
+of <span class="math inline"><em>R</em><sub>1</sub></span> — that’s the
+whole point of the decomposition. BCNF just means “there is nothing left
+to promote.”</p>
+<p>So the algorithm reads:</p>
+<blockquote>
+<p>Find a set of attributes that could be made a key. Make it a key by
+decomposition. Repeat.</p>
+</blockquote>
+<p>The two cases below — singleton <span
+class="math inline"><em>F</em></span> and general <span
+class="math inline"><em>F</em></span> — are the same algorithm,
+instantiated at the right granularity.</p>
 <h2 id="setup">Setup</h2>
 <ul>
 <li><span class="math inline"><em>R</em></span> is a relation with
 attribute set <span class="math inline">𝒰</span>.</li>
-<li><span class="math inline"><em>F</em></span> is a set of FDs, each of
-the form <span class="math inline"><em>A</em> → <em>B</em></span> with
-<span class="math inline"><em>A</em>, <em>B</em> ∈ 𝒰</span> and <span
-class="math inline"><em>A</em> ≠ <em>B</em></span>
-(<strong>singleton</strong>: one attribute on each side).</li>
-<li><span
-class="math inline"><em>G</em><sub><em>F</em></sub> = (𝒰, <em>E</em>)</span>
-is the FD graph, <span
-class="math inline"><em>E</em> = {(<em>A</em>, <em>B</em>) : <em>A</em> → <em>B</em> ∈ <em>F</em>}</span>.
-(Not required to be acyclic.)</li>
-<li><span class="math inline">reach(<em>A</em>)</span> is the set of
-nodes reachable from <span class="math inline"><em>A</em></span> in
-<span class="math inline"><em>G</em><sub><em>F</em></sub></span>
-(including <span class="math inline"><em>A</em></span>, via the empty
-path).</li>
+<li><span class="math inline"><em>F</em></span> is a set of FDs.</li>
 <li><span class="math inline"><em>X</em><sup>+</sup></span> is the
 attribute closure of <span class="math inline"><em>X</em> ⊆ 𝒰</span>
 under <span class="math inline"><em>F</em></span>.</li>
-<li>For <span class="math inline"><em>S</em> ⊆ 𝒰</span>, <span
-class="math inline"><em>X</em></span> is a <strong>superkey of <span
-class="math inline"><em>S</em></span></strong> (under the FDs that hold
-on <span class="math inline"><em>S</em></span>) iff <span
-class="math inline"><em>X</em> ∪ (<em>X</em><sup>+</sup> ∩ <em>S</em>) = <em>S</em></span>;
-equivalently <span
+<li>For <span class="math inline"><em>S</em> ⊆ 𝒰</span>, the closure of
+<span class="math inline"><em>X</em> ⊆ <em>S</em></span> <em>inside</em>
+<span class="math inline"><em>S</em></span> is <span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>S</em></span> (the
+standard identity <span
+class="math inline"><em>X</em><sub><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</sub><sup>+</sup> = <em>X</em><sup>+</sup> ∩ <em>S</em></span>).</li>
+<li><span class="math inline"><em>X</em></span> is a <strong>superkey of
+<span class="math inline"><em>S</em></span></strong> iff <span
 class="math inline"><em>X</em><sup>+</sup> ⊇ <em>S</em></span>.</li>
-<li>An FD <span class="math inline"><em>X</em> → <em>Y</em></span> is
+<li>An FD <span class="math inline"><em>X</em> → <em>Y</em></span> on
+<span class="math inline"><em>S</em></span> is
 <strong>nontrivial</strong> iff <span
 class="math inline"><em>Y</em> ⊈ <em>X</em></span>, and <strong>violates
 BCNF on <span class="math inline"><em>S</em></span></strong> iff it is
-nontrivial, <span
-class="math inline"><em>X</em> ∪ <em>Y</em> ⊆ <em>S</em></span>, and
-<span class="math inline"><em>X</em></span> is not a superkey of <span
-class="math inline"><em>S</em></span>.</li>
+nontrivial and <span class="math inline"><em>X</em></span> is not a
+superkey of <span class="math inline"><em>S</em></span>.</li>
 </ul>
-<h2 id="closure-is-reachability">Closure is reachability</h2>
-<p><strong>Lemma 1.</strong> For singleton <span
-class="math inline"><em>F</em></span>, <span
+<h2 id="key-candidates">Key candidates</h2>
+<p><strong>Definition.</strong> A set <span
+class="math inline"><em>X</em> ⊆ <em>S</em></span> is a <strong>key
+candidate of <span class="math inline"><em>S</em></span></strong> iff
+<span
+class="math display"><em>X</em> ⊊ <em>X</em><sup>+</sup> ∩ <em>S</em> ⊊ <em>S</em>.</span>
+Equivalently, <span class="math inline"><em>X</em></span> determines
+something in <span class="math inline"><em>S</em></span> beyond itself
+(so there <em>is</em> a nontrivial FD <span
+class="math inline"><em>X</em> → (<em>X</em><sup>+</sup> ∩ <em>S</em>) \ <em>X</em></span>
+inside <span class="math inline"><em>S</em></span>) yet <span
+class="math inline"><em>X</em></span> is not already a superkey of <span
+class="math inline"><em>S</em></span>.</p>
+<p><strong>BCNF as the absence of key candidates.</strong> <span
+class="math display"><em>S</em> is in BCNF ⇔ <em>S</em> has no key
+candidate.</span></p>
+<p><em>Proof.</em> (<span class="math inline">⇒</span>) If <span
+class="math inline"><em>X</em></span> is a key candidate, then <span
+class="math inline"><em>X</em> → (<em>X</em><sup>+</sup> ∩ <em>S</em>) \ <em>X</em></span>
+is a nontrivial FD on <span class="math inline"><em>S</em></span> with
+non-superkey LHS, violating BCNF. (<span class="math inline">⇐</span>)
+Any nontrivial <span class="math inline"><em>X</em> → <em>Y</em></span>
+violating BCNF on <span class="math inline"><em>S</em></span> has <span
+class="math inline"><em>Y</em> ⊈ <em>X</em></span>, so <span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>S</em> ⊋ <em>X</em></span>,
+and <span class="math inline"><em>X</em></span> not a superkey gives
+<span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>S</em> ⊊ <em>S</em></span>.
+So <span class="math inline"><em>X</em></span> is a key candidate. <span
+class="math inline">◼</span></p>
+<p><strong>The decomposition step.</strong> Given a key candidate <span
+class="math inline"><em>X</em></span> of <span
+class="math inline"><em>S</em></span>, split: <span
+class="math display"><em>S</em><sub>1</sub> = <em>X</em><sup>+</sup> ∩ <em>S</em>,   <em>S</em><sub>2</sub> = (<em>S</em> \ <em>X</em><sup>+</sup>) ∪ <em>X</em>.</span>
+By construction <span class="math inline"><em>X</em></span> is a
+superkey of <span class="math inline"><em>S</em><sub>1</sub></span> (it
+determines all of <span
+class="math inline"><em>S</em><sub>1</sub></span>), so <span
+class="math inline"><em>X</em></span> has been “promoted to a key” in
+<span class="math inline"><em>S</em><sub>1</sub></span>. Both halves
+contain <span class="math inline"><em>X</em></span> and share only <span
+class="math inline"><em>X</em></span>: <span
+class="math inline"><em>S</em><sub>1</sub> ∩ <em>S</em><sub>2</sub> = <em>X</em></span>.</p>
+<p>Everything else is a question of <em>which</em> key candidate to
+pick.</p>
+<h2 id="singleton-case">Singleton case</h2>
+<p>Assume <span class="math inline"><em>F</em></span> consists of FDs
+<span class="math inline"><em>A</em> → <em>B</em></span> with <span
+class="math inline"><em>A</em>, <em>B</em> ∈ 𝒰</span> and <span
+class="math inline"><em>A</em> ≠ <em>B</em></span>, and let <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> be the
+directed graph with an edge <span
+class="math inline"><em>A</em> → <em>B</em></span> for each FD. Write
+<span class="math inline">reach(<em>A</em>)</span> for the set of nodes
+reachable from <span class="math inline"><em>A</em></span> in <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> (including
+<span class="math inline"><em>A</em></span>).</p>
+<p><strong>Lemma 1 (Closure is reachability).</strong> For singleton
+<span class="math inline"><em>F</em></span>, <span
 class="math display"><em>X</em><sup>+</sup> = ⋃<sub><em>A</em> ∈ <em>X</em></sub>reach(<em>A</em>).</span></p>
 <p><em>Proof.</em> Compute <span
 class="math inline"><em>X</em><sup>+</sup></span> stepwise: <span
 class="math inline"><em>X</em><sub>0</sub> = <em>X</em></span>, and
 <span
-class="math inline"><em>X</em><sub><em>i</em> + 1</sub> = <em>X</em><sub><em>i</em></sub> ∪ {<em>C</em> : ∃ <em>A</em> ∈ <em>X</em><sub><em>i</em></sub>
-with <em>A</em> → <em>C</em> ∈ <em>F</em>}</span>. Because every FD has
-a singleton LHS, the firing condition is “some single attribute already
-in <span class="math inline"><em>X</em><sub><em>i</em></sub></span>”,
-not “some set of attributes”.</p>
+class="math inline"><em>X</em><sub><em>i</em> + 1</sub> = <em>X</em><sub><em>i</em></sub> ∪ {<em>C</em> : ∃<em>A</em> ∈ <em>X</em><sub><em>i</em></sub>, <em>A</em> → <em>C</em> ∈ <em>F</em>}</span>.
+Because every FD has a singleton LHS, the firing condition is “some
+single attribute already in <span
+class="math inline"><em>X</em><sub><em>i</em></sub></span>”.</p>
 <p>(⊇) For <span class="math inline"><em>A</em> ∈ <em>X</em></span> and
-<span class="math inline"><em>B</em> ∈ reach(<em>A</em>)</span>, take a
-path <span
-class="math inline"><em>A</em> = <em>A</em><sub>0</sub> → <em>A</em><sub>1</sub> → ⋯ → <em>A</em><sub><em>k</em></sub> = <em>B</em></span>
-in <span class="math inline"><em>G</em><sub><em>F</em></sub></span>.
-Then <span
-class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em><sub>0</sub></span>
-and each edge <span
-class="math inline"><em>A</em><sub><em>i</em></sub> → <em>A</em><sub><em>i</em> + 1</sub> ∈ <em>F</em></span>
+<span class="math inline"><em>B</em> ∈ reach(<em>A</em>)</span>, follow
+the path <span
+class="math inline"><em>A</em> = <em>A</em><sub>0</sub> → <em>A</em><sub>1</sub> → ⋯ → <em>A</em><sub><em>k</em></sub> = <em>B</em></span>:
+each edge <span
+class="math inline"><em>A</em><sub><em>i</em></sub> → <em>A</em><sub><em>i</em> + 1</sub></span>
 puts <span
 class="math inline"><em>A</em><sub><em>i</em> + 1</sub></span> into
 <span class="math inline"><em>X</em><sub><em>i</em> + 1</sub></span>, so
 <span
-class="math inline"><em>B</em> ∈ <em>X</em><sub><em>k</em></sub> ⊆ <em>X</em><sup>+</sup></span>.</p>
+class="math inline"><em>B</em> ∈ <em>X</em><sup>+</sup></span>.</p>
 <p>(⊆) Induct on the smallest <span
 class="math inline"><em>i</em></span> with <span
-class="math inline"><em>B</em> ∈ <em>X</em><sub><em>i</em></sub></span>.
-If <span class="math inline"><em>i</em> = 0</span>, then <span
-class="math inline"><em>B</em> ∈ <em>X</em></span> and is reachable from
-itself by the empty path. If <span
-class="math inline"><em>i</em> ≥ 1</span>, there is a witness <span
+class="math inline"><em>B</em> ∈ <em>X</em><sub><em>i</em></sub></span>:
+either <span class="math inline"><em>B</em> ∈ <em>X</em></span> (empty
+path) or <span class="math inline"><em>B</em></span> is added via <span
 class="math inline"><em>A</em> → <em>B</em> ∈ <em>F</em></span> with
 <span
-class="math inline"><em>A</em> ∈ <em>X</em><sub><em>i</em> − 1</sub></span>;
-by the inductive hypothesis <span
-class="math inline"><em>A</em> ∈ reach(<em>A</em><sub>0</sub>)</span>
-for some <span
-class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span>, and
-appending the edge <span
-class="math inline"><em>A</em> → <em>B</em></span> gives <span
-class="math inline"><em>B</em> ∈ reach(<em>A</em><sub>0</sub>)</span>.
-<span class="math inline">◼</span></p>
-<h2 id="the-attribute-level-bcnf-criterion">The attribute-level BCNF
-criterion</h2>
-<p>The main result, stated directly at the sub-relation level:</p>
+class="math inline"><em>A</em> ∈ <em>X</em><sub><em>i</em> − 1</sub></span>,
+and the inductive hypothesis extends a path from <span
+class="math inline"><em>X</em></span> to <span
+class="math inline"><em>A</em></span> into one to <span
+class="math inline"><em>B</em></span>. <span
+class="math inline">◼</span></p>
+<h3 id="single-attribute-key-candidates-suffice">Single-attribute key
+candidates suffice</h3>
+<p>For singleton <span class="math inline"><em>F</em></span>, a key
+candidate can always be taken to be a single attribute. Concretely,
+<span class="math inline"><em>S</em></span> has a key candidate iff it
+has a single-attribute one:</p>
 <p><strong>Theorem.</strong> For singleton <span
 class="math inline"><em>F</em></span> and any <span
 class="math inline"><em>S</em> ⊆ 𝒰</span>, <span
-class="math display"><em>S</em> is in BCNF  ⇔  for every
-<em>A</em> ∈ <em>S</em>, reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}.</span></p>
-<p>Intuition: in the FD graph, each attribute either reaches nothing new
-in <span class="math inline"><em>S</em></span> (no outgoing derivation
-to worry about) or reaches all of <span
-class="math inline"><em>S</em></span> (its LHS is a superkey, so any FD
-it gets into does not violate BCNF). Anything in between is exactly a
-BCNF violation.</p>
-<p>Because attributes that are not the LHS of any FD in <span
-class="math inline"><em>F</em></span> have <span
-class="math inline">reach(<em>A</em>) = {<em>A</em>}</span> and
-trivially pass, the check only needs to inspect LHS attributes of input
-FDs — the same finite list <span class="math inline"><em>F</em></span>
-gives you, at every recursion level.</p>
-<p><em>Proof.</em></p>
-<p><strong>(⇒)</strong> Suppose <span
-class="math inline"><em>S</em></span> is in BCNF. Fix <span
-class="math inline"><em>A</em> ∈ <em>S</em></span>. If <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em> = {<em>A</em>}</span>,
-we are done. Otherwise pick <span
-class="math inline"><em>B</em> ∈ reach(<em>A</em>) ∩ <em>S</em></span>
-with <span class="math inline"><em>B</em> ≠ <em>A</em></span>. By Lemma
-1, <span class="math inline"><em>B</em> ∈ <em>A</em><sup>+</sup></span>,
-so <span class="math inline">{<em>A</em>} → {<em>B</em>}</span> is a
-nontrivial FD in <span
-class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>.
-BCNF forces <span class="math inline"><em>A</em></span> to be a superkey
-of <span class="math inline"><em>S</em></span>, i.e., <span
-class="math inline"><em>A</em><sup>+</sup> ⊇ <em>S</em></span>, which by
-Lemma 1 gives <span
-class="math inline">reach(<em>A</em>) ⊇ <em>S</em></span>, so <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em> = <em>S</em></span>.</p>
-<p><strong>(⇐)</strong> Suppose every <span
-class="math inline"><em>A</em> ∈ <em>S</em></span> has <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}</span>.
-Let <span class="math inline"><em>X</em> → <em>Y</em></span> be a
-nontrivial FD in <span
-class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>,
-so <span class="math inline"><em>X</em>, <em>Y</em> ⊆ <em>S</em></span>
-and <span class="math inline"><em>Y</em> ⊈ <em>X</em></span>. Pick <span
-class="math inline"><em>B</em> ∈ <em>Y</em> \ <em>X</em></span>; then
-<span
-class="math inline"><em>B</em> ∈ <em>X</em><sup>+</sup> ∩ <em>S</em></span>.
-By Lemma 1, <span
-class="math inline"><em>B</em> ∈ reach(<em>A</em><sub>0</sub>)</span>
-for some <span
-class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span>. Since
-<span
-class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em> ⊆ <em>S</em></span>
-and <span class="math inline"><em>B</em> ∈ <em>S</em></span> with <span
-class="math inline"><em>B</em> ≠ <em>A</em><sub>0</sub></span> (as <span
-class="math inline"><em>B</em> ∉ <em>X</em></span>), <span
+class="math display"><em>S</em> is in
+BCNF ⇔ ∀<em>A</em> ∈ <em>S</em>, reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}.</span>
+I.e., each attribute either reaches nothing new inside <span
+class="math inline"><em>S</em></span>, or is a superkey of <span
+class="math inline"><em>S</em></span> — never in between.</p>
+<p><em>Proof.</em> Going from key candidates to single attributes: if
+<span class="math inline"><em>X</em> ⊆ <em>S</em></span> is a key
+candidate, pick any <span
+class="math inline"><em>B</em> ∈ (<em>X</em><sup>+</sup> ∩ <em>S</em>) \ <em>X</em></span>.
+By Lemma 1, <span class="math inline"><em>B</em></span> is reachable
+from some <span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span>; since
+<span class="math inline"><em>B</em> ≠ <em>A</em><sub>0</sub></span> and
+<span class="math inline"><em>B</em> ∈ <em>S</em></span>, we have <span
 class="math inline">reach(<em>A</em><sub>0</sub>) ∩ <em>S</em> ∋ <em>B</em> ≠ <em>A</em><sub>0</sub></span>,
 so it is not <span class="math inline">{<em>A</em><sub>0</sub>}</span>.
-By hypothesis it must equal <span class="math inline"><em>S</em></span>.
-Thus <span
-class="math inline"><em>X</em><sup>+</sup> ⊇ reach(<em>A</em><sub>0</sub>) ⊇ <em>S</em></span>,
-making <span class="math inline"><em>X</em></span> a superkey of <span
+If it equaled <span class="math inline"><em>S</em></span>, then <span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span> would
+make <span class="math inline"><em>X</em></span> a superkey,
+contradicting the key-candidate property. So <span
+class="math inline"><em>A</em><sub>0</sub></span> is a
+<em>single-attribute</em> key candidate of <span
 class="math inline"><em>S</em></span>.</p>
-<p>Hence every nontrivial FD in <span
-class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>
-has a superkey LHS: <span class="math inline"><em>S</em></span> is in
-BCNF. <span class="math inline">◼</span></p>
-<h2 id="what-this-means-for-decomposition">What this means for
-decomposition</h2>
-<p>The theorem is a closed statement about any attribute subset <span
-class="math inline"><em>S</em></span> — it makes no reference to a
-decomposition history, which is why it works recursively at every step.
-Each BCNF decomposition step looks like:</p>
+<p>Going the other way: a single-attribute key candidate is a key
+candidate. Applying the BCNF criterion above completes the equivalence.
+<span class="math inline">◼</span></p>
+<p>So for singleton <span class="math inline"><em>F</em></span>, the
+algorithm specializes to:</p>
 <ol type="1">
-<li>Current sub-relation has attribute set <span
-class="math inline"><em>S</em></span> (initially <span
-class="math inline">𝒰</span>).</li>
-<li>For each attribute <span
-class="math inline"><em>A</em> ∈ <em>S</em></span> that is the LHS of
-some FD in <span class="math inline"><em>F</em></span>, compute <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em></span> once
-(linear-time BFS/DFS on <span
-class="math inline"><em>G</em><sub><em>F</em></sub></span>, then
-intersect with <span class="math inline"><em>S</em></span>).</li>
-<li>If every such <span class="math inline"><em>A</em></span> has <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}</span>,
-the theorem says <span class="math inline"><em>S</em></span> is in BCNF
-— emit it and stop this branch.</li>
+<li>For each <span class="math inline"><em>A</em> ∈ <em>S</em></span>
+that is an LHS of some FD in <span class="math inline"><em>F</em></span>
+(others have <span
+class="math inline">reach(<em>A</em>) = {<em>A</em>}</span> and pass
+trivially), check whether <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em> = <em>S</em></span>.</li>
+<li>If every such <span class="math inline"><em>A</em></span> is a
+superkey of <span class="math inline"><em>S</em></span>, <span
+class="math inline"><em>S</em></span> is in BCNF — done.</li>
 <li>Otherwise pick any violating <span
-class="math inline"><em>A</em></span>, i.e., one with <span
-class="math inline">{<em>A</em>} ⊊ reach(<em>A</em>) ∩ <em>S</em> ⊊ <em>S</em></span>.
-Split <span class="math inline"><em>S</em></span> into <span
-class="math display"><em>S</em><sub>1</sub> = reach(<em>A</em>) ∩ <em>S</em>   and   <em>S</em><sub>2</sub> = (<em>S</em> \ reach(<em>A</em>)) ∪ {<em>A</em>},</span>
-and recurse on each. (<span
-class="math inline"><em>S</em><sub>1</sub></span> is the BCNF-style
-splitter “<span class="math inline"><em>A</em></span> together with its
-closure”; <span class="math inline"><em>S</em><sub>2</sub></span> keeps
-<span class="math inline"><em>A</em></span> as the attribute linking the
-two halves.)</li>
+class="math inline"><em>A</em></span> and split on <span
+class="math inline">{<em>A</em>}</span>: <span
+class="math display"><em>S</em><sub>1</sub> = reach(<em>A</em>) ∩ <em>S</em>,   <em>S</em><sub>2</sub> = (<em>S</em> \ reach(<em>A</em>)) ∪ {<em>A</em>}.</span>
+<span class="math inline"><em>A</em></span> is now a key of <span
+class="math inline"><em>S</em><sub>1</sub></span>. Recurse.</li>
 </ol>
 <p>The whole procedure reads the graph <span
 class="math inline"><em>G</em><sub><em>F</em></sub></span> once. No
-projection of FDs, no recomputation of closures in a new FD system, no
-enumeration of subsets, and no acyclicity assumption.</p>
-<h2 id="remark-reconciling-with-the-fd-centric-view">Remark: reconciling
-with the FD-centric view</h2>
-<p>The FD-centric version of the theorem on the top-level relation —
-“<span class="math inline"><em>R</em></span> is in BCNF iff every <span
-class="math inline"><em>A</em> → <em>B</em> ∈ <em>F</em></span> has
-<span class="math inline"><em>A</em></span> as a superkey” — is the
-special case <span class="math inline"><em>S</em> = 𝒰</span>: for <span
-class="math inline"><em>A</em></span> that is an LHS of some FD, <span
-class="math inline">reach(<em>A</em>) ⊋ {<em>A</em>}</span>, so the
-attribute-level check reduces to <span
-class="math inline">reach(<em>A</em>) = 𝒰</span>, i.e., <span
-class="math inline"><em>A</em></span> is a superkey. Attributes that
-appear on no LHS trivially pass. The attribute-level statement is what
-generalizes cleanly to sub-relations, because <span
-class="math inline">reach(<em>A</em>) ∩ <em>S</em></span> is read
-directly from the original graph <span
-class="math inline"><em>G</em><sub><em>F</em></sub></span> rather than
-from a projected FD set.</p>
+powerset, no acyclicity required, no projection of FDs between
+steps.</p>
+<h3 id="uniqueness-when-g_f-is-a-forest">Uniqueness when <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> is a
+forest</h3>
+<p>BCNF decomposition is famously non-unique: different choices of
+violating FD can yield different final sets of sub-relations. The
+smallest example is a <strong>diamond</strong>: <span
+class="math inline"><em>A</em> → <em>B</em>, <em>A</em> → <em>C</em>, <em>B</em> → <em>D</em>, <em>C</em> → <em>D</em></span>.
+Splitting on <span class="math inline"><em>B</em></span> yields <span
+class="math inline">{<em>B</em>, <em>D</em>}, {<em>A</em>, <em>B</em>, <em>C</em>}</span>;
+splitting on <span class="math inline"><em>C</em></span> yields <span
+class="math inline">{<em>C</em>, <em>D</em>}, {<em>A</em>, <em>B</em>, <em>C</em>}</span>
+— genuinely different.</p>
+<p>Acyclicity alone is not enough (the diamond is acyclic). What fails
+is a stronger tree-like property: <span
+class="math inline"><em>D</em></span> has two parents, so sibling
+subtrees are not disjoint. Requiring every node to have
+<strong>in-degree at most one</strong> — i.e., <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> is a forest —
+rules exactly this out.</p>
+<p>Call <span class="math inline"><em>v</em></span>
+<strong>internal</strong> if it has an outgoing edge in <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> (i.e., <span
+class="math inline"><em>v</em></span> is the LHS of some FD), and define
+<span
+class="math inline"><em>T</em><sub><em>v</em></sub> = {<em>v</em>} ∪ children(<em>v</em>)</span>.
+Let <span class="math inline"><em>K</em></span> be the set of attributes
+with no incoming edge (roots of each tree, plus isolated nodes) — the
+unique candidate key of <span class="math inline"><em>R</em></span>.</p>
+<p><strong>Theorem (Uniqueness).</strong> If <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> is a forest,
+the decomposition is uniquely determined and equals <span
+class="math display">𝒟 = {<em>T</em><sub><em>v</em></sub> : <em>v</em>
+internal} ∪ {<em>K</em>},</span> with <span
+class="math inline"><em>K</em></span> dropped when <span
+class="math inline">|<em>K</em>| = 1</span> (then <span
+class="math inline"><em>K</em> ⊆ <em>T</em><sub><em>v</em></sub></span>
+for the unique root <span class="math inline"><em>v</em></span>).</p>
+<p>Uniqueness comes down to a one-step commutativity: if <span
+class="math inline"><em>A</em></span> and <span
+class="math inline"><em>B</em></span> are both violating in <span
+class="math inline"><em>S</em></span>, processing them in either order
+yields the same three pieces.</p>
+<p><strong>Nested</strong> (<span
+class="math inline"><em>B</em> ∈ reach(<em>A</em>)</span>, so <span
+class="math inline"><em>A</em></span> is an ancestor of <span
+class="math inline"><em>B</em></span>). Forest acyclicity gives <span
+class="math inline"><em>A</em> ∉ reach(<em>B</em>)</span>; forest
+in-degree <span class="math inline"> ≤ 1</span> gives <span
+class="math inline">reach(<em>B</em>) ⊆ reach(<em>A</em>)</span>.
+Processing <span class="math inline"><em>A</em></span> first then <span
+class="math inline"><em>B</em></span> produces <span
+class="math inline">reach(<em>B</em>) ∩ <em>S</em></span>, <span
+class="math inline">(reach(<em>A</em>) ∩ <em>S</em>) \ reach(<em>B</em>) ∪ {<em>B</em>}</span>,
+<span
+class="math inline">(<em>S</em> \ reach(<em>A</em>)) ∪ {<em>A</em>}</span>.
+Processing <span class="math inline"><em>B</em></span> first then <span
+class="math inline"><em>A</em></span> produces the same three sets by
+direct calculation (using <span
+class="math inline">reach(<em>B</em>) ⊆ reach(<em>A</em>)</span> and
+<span class="math inline"><em>B</em> ∈ reach(<em>A</em>)</span>).</p>
+<p><strong>Disjoint</strong> (<span
+class="math inline"><em>A</em>, <em>B</em></span> in different
+subtrees). This is where the forest hypothesis earns its keep: sibling
+subtrees being disjoint is exactly the in-degree-<span
+class="math inline"> ≤ 1</span> property. Processing <span
+class="math inline"><em>A</em></span> puts <span
+class="math inline"><em>B</em></span> into the residue <span
+class="math inline"><em>S</em><sub>2</sub></span>, where <span
+class="math inline">reach(<em>B</em>) ∩ <em>S</em><sub>2</sub> = reach(<em>B</em>) ∩ <em>S</em></span>
+is unchanged and <span class="math inline"><em>B</em></span> is still
+violating. Both orders yield <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em></span>, <span
+class="math inline">reach(<em>B</em>) ∩ <em>S</em></span>, <span
+class="math inline">(<em>S</em> \ (reach(<em>A</em>) ∪ reach(<em>B</em>))) ∪ {<em>A</em>, <em>B</em>}</span>.</p>
+<p>From the one-step commutativity, any two orderings can be bridged by
+finitely many adjacent swaps; the final multiset of sub-relations is an
+invariant of the algorithm. The characterization as <span
+class="math inline">{<em>T</em><sub><em>v</em></sub>} ∪ {<em>K</em>}</span>
+follows by induction on the number of internal nodes.</p>
+<p><strong>Why the diamond breaks this.</strong> In the diamond, <span
+class="math inline"><em>B</em></span> and <span
+class="math inline"><em>C</em></span> are siblings with a shared
+descendant <span class="math inline"><em>D</em></span>: <span
+class="math inline">reach(<em>B</em>) ∩ reach(<em>C</em>) = {<em>D</em>}</span>
+instead of empty. Processing <span class="math inline"><em>B</em></span>
+first puts <span class="math inline"><em>D</em></span> into <span
+class="math inline">{<em>B</em>, <em>D</em>}</span> and removes it from
+the residue; processing <span class="math inline"><em>C</em></span>
+first puts <span class="math inline"><em>D</em></span> into <span
+class="math inline">{<em>C</em>, <em>D</em>}</span>. <span
+class="math inline"><em>D</em></span> goes with whichever parent is
+chosen first — exactly the ambiguity.</p>
+<h2 id="general-case">General case</h2>
+<p>For arbitrary <span class="math inline"><em>F</em></span>, key
+candidates can be multi-attribute. The algorithm iterates over them
+<em>in size order</em> and picks the first one that works:</p>
+<pre><code>decompose(S):
+  for k = 0, 1, 2, …, |S| − 1:
+    for each X ⊆ S with |X| = k:
+      if X ⊊ X⁺ ∩ S ⊊ S:                    # X is a key candidate of S
+        return decompose(X⁺ ∩ S)
+             ∪ decompose((S ∖ X⁺) ∪ X)
+  return {S}</code></pre>
+<p>Call the first such <span class="math inline"><em>X</em></span>
+encountered the <strong>minimal key candidate</strong> of <span
+class="math inline"><em>S</em></span>. Its minimality has a useful form:
+every proper subset <span
+class="math inline"><em>Y</em> ⊊ <em>X</em></span> has <span
+class="math display"><em>Y</em><sup>+</sup> ∩ <em>S</em> = <em>Y</em>.</span>
+(A proper subset can’t be a superkey — else <span
+class="math inline"><em>X</em></span> would be too — and by the
+“smallest first” rule it isn’t a key candidate, so its closure inside
+<span class="math inline"><em>S</em></span> is itself.)</p>
+<p>For singleton <span class="math inline"><em>F</em></span>, the
+minimal key candidate always has <span
+class="math inline">|<em>X</em>| = 1</span>, recovering the
+single-attribute algorithm above. The powerset loop is the natural
+generalization when <span class="math inline"><em>F</em></span> has
+multi-attribute LHSs.</p>
+<h3 id="non-redundancy">Non-redundancy</h3>
+<p><strong>Definition.</strong> A decomposition <span
+class="math inline">𝒟 = {<em>S</em><sub>1</sub>, …, <em>S</em><sub><em>k</em></sub>}</span>
+is <strong>non-redundant</strong> if no member is contained in another:
+for all <span class="math inline"><em>i</em> ≠ <em>j</em></span>, <span
+class="math inline"><em>S</em><sub><em>i</em></sub> ⊈ <em>S</em><sub><em>j</em></sub></span>.
+The offending case is the textbook example <span
+class="math inline"><em>F</em> = {<em>Z</em> → <em>W</em>}</span> on
+<span
+class="math inline">𝒰 = {<em>X</em>, <em>Y</em>, <em>Z</em>, <em>W</em>}</span>,
+where picking the augmented violating FD <span
+class="math inline">{<em>Y</em>, <em>Z</em>} → <em>W</em></span> (with
+extraneous <span class="math inline"><em>Y</em></span>) produces <span
+class="math inline">{{<em>X</em>, <em>Y</em>, <em>Z</em>}, {<em>Y</em>, <em>Z</em>}, {<em>Z</em>, <em>W</em>}}</span>
+and <span
+class="math inline">{<em>Y</em>, <em>Z</em>} ⊊ {<em>X</em>, <em>Y</em>, <em>Z</em>}</span>.</p>
+<p><strong>Theorem (Non-redundancy).</strong> For any <span
+class="math inline"><em>F</em></span>, the powerset algorithm produces a
+non-redundant decomposition.</p>
+<p><em>Proof.</em> Fix a split step: current sub-relation <span
+class="math inline"><em>S</em></span>, minimal key candidate <span
+class="math inline"><em>X</em></span>, halves <span
+class="math inline"><em>S</em><sub>1</sub> = <em>X</em><sup>+</sup> ∩ <em>S</em></span>
+and <span
+class="math inline"><em>S</em><sub>2</sub> = (<em>S</em> \ <em>X</em><sup>+</sup>) ∪ <em>X</em></span>.
+Two elementary facts:</p>
+<ul>
+<li><span
+class="math inline"><em>S</em><sub>1</sub> ∩ <em>S</em><sub>2</sub> = <em>X</em></span>
+(direct calculation).</li>
+<li><span
+class="math inline">|<em>S</em><sub>1</sub>| ≥ |<em>X</em>|+1</span> and
+<span
+class="math inline">|<em>S</em><sub>2</sub>| ≥ |<em>X</em>|+1</span>,
+since <span
+class="math inline"><em>X</em> ⊊ <em>X</em><sup>+</sup> ∩ <em>S</em> ⊊ <em>S</em></span>.</li>
+</ul>
+<p><strong>Key lemma.</strong> Every key candidate <span
+class="math inline"><em>Y</em></span> used inside the recursion on <span
+class="math inline"><em>S</em><sub>1</sub></span> or <span
+class="math inline"><em>S</em><sub>2</sub></span> satisfies <span
+class="math inline"><em>Y</em> ⊈ <em>X</em></span>.</p>
+<p><em>Proof of lemma.</em> Let <span
+class="math inline"><em>T</em></span> be a descendant piece (<span
+class="math inline"><em>T</em> ⊆ <em>S</em><sub>1</sub></span> or <span
+class="math inline"><em>T</em> ⊆ <em>S</em><sub>2</sub></span>), and
+suppose <span class="math inline"><em>Y</em> ⊆ <em>X</em></span>.</p>
+<ul>
+<li>If <span class="math inline"><em>Y</em> ⊊ <em>X</em></span>: by
+<span class="math inline">(⋆)</span>, <span
+class="math inline"><em>Y</em><sup>+</sup> ∩ <em>S</em> = <em>Y</em></span>.
+Since <span class="math inline"><em>T</em> ⊆ <em>S</em></span>, <span
+class="math inline"><em>Y</em><sup>+</sup> ∩ <em>T</em> ⊆ <em>Y</em><sup>+</sup> ∩ <em>S</em> = <em>Y</em></span>,
+so <span
+class="math inline"><em>Y</em><sup>+</sup> ∩ <em>T</em> = <em>Y</em></span>
+— <span class="math inline"><em>Y</em></span> is trivially closed in
+<span class="math inline"><em>T</em></span>, not a key candidate.</li>
+<li>If <span class="math inline"><em>Y</em> = <em>X</em></span> and
+<span
+class="math inline"><em>T</em> ⊆ <em>S</em><sub>1</sub> ⊆ <em>X</em><sup>+</sup></span>:
+then <span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>T</em> = <em>T</em></span>,
+so <span class="math inline"><em>X</em></span> is a superkey of <span
+class="math inline"><em>T</em></span> — not a key candidate.</li>
+<li>If <span class="math inline"><em>Y</em> = <em>X</em></span> and
+<span class="math inline"><em>T</em> ⊆ <em>S</em><sub>2</sub></span>:
+then <span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>T</em> ⊆ <em>X</em><sup>+</sup> ∩ <em>S</em><sub>2</sub> = <em>X</em></span>;
+combined with <span
+class="math inline"><em>X</em> ∩ <em>T</em> ⊆ <em>X</em><sup>+</sup> ∩ <em>T</em></span>,
+this gives <span
+class="math inline"><em>X</em><sup>+</sup> ∩ <em>T</em> = <em>X</em> ∩ <em>T</em></span>,
+which is trivial (self-closed) — not a key candidate.</li>
+</ul>
+<p>So no <span class="math inline"><em>Y</em> ⊆ <em>X</em></span> is a
+key candidate in any <span class="math inline"><em>T</em></span>; every
+pivot used inside the recursion has some attribute outside <span
+class="math inline"><em>X</em></span>. <span
+class="math inline">◼</span></p>
+<p><strong>From the lemma to non-redundancy.</strong> Both halves of any
+split contain the pivot. The lemma says each recursion-pivot contributes
+at least one attribute outside <span
+class="math inline"><em>X</em></span> to both halves, so every piece
+ever produced on the <span
+class="math inline"><em>S</em><sub>1</sub></span>-side contains an
+attribute of <span
+class="math inline"><em>X</em><sup>+</sup> \ <em>X</em></span>, and
+every piece on the <span
+class="math inline"><em>S</em><sub>2</sub></span>-side contains an
+attribute of <span
+class="math inline"><em>S</em> \ <em>X</em><sup>+</sup></span>. In
+particular, any final sub-relation <span
+class="math inline"><em>L</em><sub>1</sub></span> descending from <span
+class="math inline"><em>S</em><sub>1</sub></span> has <span
+class="math inline"><em>L</em><sub>1</sub> ⊈ <em>X</em></span>, and any
+<span class="math inline"><em>L</em><sub>2</sub></span> from <span
+class="math inline"><em>S</em><sub>2</sub></span> has <span
+class="math inline"><em>L</em><sub>2</sub> ⊈ <em>X</em></span>.</p>
+<p>Let <span
+class="math inline"><em>L</em><sub>1</sub>, <em>L</em><sub>2</sub></span>
+be two final sub-relations whose recursion paths diverge at a split with
+pivot <span class="math inline"><em>X</em></span>, <span
+class="math inline"><em>L</em><sub>1</sub></span> on the <span
+class="math inline"><em>S</em><sub>1</sub></span>-side and <span
+class="math inline"><em>L</em><sub>2</sub></span> on the <span
+class="math inline"><em>S</em><sub>2</sub></span>-side. Then <span
+class="math inline"><em>L</em><sub>1</sub> ∩ <em>L</em><sub>2</sub> ⊆ <em>S</em><sub>1</sub> ∩ <em>S</em><sub>2</sub> = <em>X</em></span>,
+so <span
+class="math inline"><em>L</em><sub>1</sub> ⊆ <em>L</em><sub>2</sub></span>
+would give <span
+class="math inline"><em>L</em><sub>1</sub> ⊆ <em>X</em></span>,
+contradicting <span
+class="math inline"><em>L</em><sub>1</sub> ⊈ <em>X</em></span>.
+Symmetrically <span
+class="math inline"><em>L</em><sub>2</sub> ⊈ <em>L</em><sub>1</sub></span>.
+Every two final sub-relations are incomparable. <span
+class="math inline">◼</span></p>
+<p><strong>Where the textbook algorithm goes wrong.</strong> The
+textbook splits on a violating FD <span
+class="math inline"><em>α</em> → <em>β</em></span>, and <span
+class="math inline"><em>α</em></span> may carry <em>extraneous</em>
+attributes — attributes whose removal still leaves a valid (and still
+violating) FD, like <span class="math inline"><em>Y</em></span> in <span
+class="math inline">{<em>Y</em>, <em>Z</em>} → <em>W</em></span> when
+<span class="math inline"><em>Z</em> → <em>W</em></span> already holds.
+The inflated <span class="math inline"><em>α</em></span> propagates into
+<span class="math inline"><em>R</em><sub>1</sub></span>, and a later
+split can shed the extras into a sub-relation that is then contained in
+<span class="math inline"><em>R</em><sub>2</sub></span>. The key-centric
+version picks the <em>smallest</em> key candidate by construction, so
+<span class="math inline">(⋆)</span> formally rules out extraneous
+attributes.</p>
+<h2 id="summary">Summary</h2>
+<p>The FD-centric reading of BCNF decomposition obscures the actual
+object of interest: sets of attributes that are not yet keys. Reading
+the algorithm key-centrically — find an <span
+class="math inline"><em>X</em></span> you can promote to a key, promote
+it, repeat — collapses the BCNF check, the decomposition step, and the
+correctness arguments into a single pattern:</p>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th></th>
+<th>Singleton <span class="math inline"><em>F</em></span></th>
+<th>General <span class="math inline"><em>F</em></span></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Key candidate</td>
+<td>single attribute <span class="math inline"><em>A</em></span> with
+<span
+class="math inline">{<em>A</em>} ⊊ reach(<em>A</em>) ∩ <em>S</em> ⊊ <em>S</em></span></td>
+<td>subset <span class="math inline"><em>X</em></span> with <span
+class="math inline"><em>X</em> ⊊ <em>X</em><sup>+</sup> ∩ <em>S</em> ⊊ <em>S</em></span></td>
+</tr>
+<tr>
+<td>How to find one</td>
+<td>scan LHS attributes of <span
+class="math inline"><em>F</em></span></td>
+<td>iterate subsets small to large</td>
+</tr>
+<tr>
+<td>Split</td>
+<td><span
+class="math inline"><em>S</em><sub>1</sub> = reach(<em>A</em>) ∩ <em>S</em></span>,
+<span
+class="math inline"><em>S</em><sub>2</sub> = (<em>S</em> \ reach(<em>A</em>)) ∪ {<em>A</em>}</span></td>
+<td><span
+class="math inline"><em>S</em><sub>1</sub> = <em>X</em><sup>+</sup> ∩ <em>S</em></span>,
+<span
+class="math inline"><em>S</em><sub>2</sub> = (<em>S</em> \ <em>X</em><sup>+</sup>) ∪ <em>X</em></span></td>
+</tr>
+<tr>
+<td>After the split</td>
+<td><span class="math inline"><em>A</em></span> is a key of <span
+class="math inline"><em>S</em><sub>1</sub></span></td>
+<td><span class="math inline"><em>X</em></span> is a key of <span
+class="math inline"><em>S</em><sub>1</sub></span></td>
+</tr>
+<tr>
+<td>Uniqueness</td>
+<td>yes, when <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> is a
+forest</td>
+<td>not in general</td>
+</tr>
+<tr>
+<td>Non-redundancy</td>
+<td>automatic (pivots are single attributes)</td>
+<td>automatic when picking the <em>minimal</em> key candidate</td>
+</tr>
+</tbody>
+</table>
+<p>Same algorithm, different granularity, same idea: decomposition is
+the act of turning a would-be key into an actual one.</p>
 </body>
 </html>
