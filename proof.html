@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>proof</title>
+  <style>
+    /* Default styles provided by pandoc.
+    ** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+    */
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      white-space: pre-wrap;
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      border: none;
+      border-top: 1px solid #1a1a1a;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+</head>
+<body>
+<h1 id="bcnf-for-singleton-fds-a-reachability-check-on-attributes">BCNF
+for singleton FDs: a reachability check on attributes</h1>
+<h2 id="motivation">Motivation</h2>
+<p>The textbook BCNF check considers every nontrivial FD in <span
+class="math inline"><em>F</em><sup>+</sup></span>, which in principle
+requires iterating over the powerset of attributes for the LHS. In a
+classroom or exam setting this is painful to do by hand. The result
+below shows that when the input FD set <span
+class="math inline"><em>F</em></span> is <strong>singleton</strong> (one
+attribute on each side), BCNF status reduces to a check on
+<em>attributes</em>: for each attribute <span
+class="math inline"><em>A</em></span>, does <span
+class="math inline"><em>A</em></span>’s reachable set in the FD graph
+equal <span class="math inline">{<em>A</em>}</span> or the whole schema?
+The same check applies to every sub-relation during decomposition, using
+the original FD graph throughout — no projection, no acyclicity, no
+powerset. The student works entirely with one picture: the FD graph
+<span class="math inline"><em>G</em><sub><em>F</em></sub></span>.</p>
+<h2 id="setup">Setup</h2>
+<ul>
+<li><span class="math inline"><em>R</em></span> is a relation with
+attribute set <span class="math inline">𝒰</span>.</li>
+<li><span class="math inline"><em>F</em></span> is a set of FDs, each of
+the form <span class="math inline"><em>A</em> → <em>B</em></span> with
+<span class="math inline"><em>A</em>, <em>B</em> ∈ 𝒰</span> and <span
+class="math inline"><em>A</em> ≠ <em>B</em></span>
+(<strong>singleton</strong>: one attribute on each side).</li>
+<li><span
+class="math inline"><em>G</em><sub><em>F</em></sub> = (𝒰, <em>E</em>)</span>
+is the FD graph, <span
+class="math inline"><em>E</em> = {(<em>A</em>, <em>B</em>) : <em>A</em> → <em>B</em> ∈ <em>F</em>}</span>.
+(Not required to be acyclic.)</li>
+<li><span class="math inline">reach(<em>A</em>)</span> is the set of
+nodes reachable from <span class="math inline"><em>A</em></span> in
+<span class="math inline"><em>G</em><sub><em>F</em></sub></span>
+(including <span class="math inline"><em>A</em></span>, via the empty
+path).</li>
+<li><span class="math inline"><em>X</em><sup>+</sup></span> is the
+attribute closure of <span class="math inline"><em>X</em> ⊆ 𝒰</span>
+under <span class="math inline"><em>F</em></span>.</li>
+<li>For <span class="math inline"><em>S</em> ⊆ 𝒰</span>, <span
+class="math inline"><em>X</em></span> is a <strong>superkey of <span
+class="math inline"><em>S</em></span></strong> (under the FDs that hold
+on <span class="math inline"><em>S</em></span>) iff <span
+class="math inline"><em>X</em> ∪ (<em>X</em><sup>+</sup> ∩ <em>S</em>) = <em>S</em></span>;
+equivalently <span
+class="math inline"><em>X</em><sup>+</sup> ⊇ <em>S</em></span>.</li>
+<li>An FD <span class="math inline"><em>X</em> → <em>Y</em></span> is
+<strong>nontrivial</strong> iff <span
+class="math inline"><em>Y</em> ⊈ <em>X</em></span>, and <strong>violates
+BCNF on <span class="math inline"><em>S</em></span></strong> iff it is
+nontrivial, <span
+class="math inline"><em>X</em> ∪ <em>Y</em> ⊆ <em>S</em></span>, and
+<span class="math inline"><em>X</em></span> is not a superkey of <span
+class="math inline"><em>S</em></span>.</li>
+</ul>
+<h2 id="closure-is-reachability">Closure is reachability</h2>
+<p><strong>Lemma 1.</strong> For singleton <span
+class="math inline"><em>F</em></span>, <span
+class="math display"><em>X</em><sup>+</sup> = ⋃<sub><em>A</em> ∈ <em>X</em></sub>reach(<em>A</em>).</span></p>
+<p><em>Proof.</em> Compute <span
+class="math inline"><em>X</em><sup>+</sup></span> stepwise: <span
+class="math inline"><em>X</em><sub>0</sub> = <em>X</em></span>, and
+<span
+class="math inline"><em>X</em><sub><em>i</em> + 1</sub> = <em>X</em><sub><em>i</em></sub> ∪ {<em>C</em> : ∃ <em>A</em> ∈ <em>X</em><sub><em>i</em></sub>
+with <em>A</em> → <em>C</em> ∈ <em>F</em>}</span>. Because every FD has
+a singleton LHS, the firing condition is “some single attribute already
+in <span class="math inline"><em>X</em><sub><em>i</em></sub></span>”,
+not “some set of attributes”.</p>
+<p>(⊇) For <span class="math inline"><em>A</em> ∈ <em>X</em></span> and
+<span class="math inline"><em>B</em> ∈ reach(<em>A</em>)</span>, take a
+path <span
+class="math inline"><em>A</em> = <em>A</em><sub>0</sub> → <em>A</em><sub>1</sub> → ⋯ → <em>A</em><sub><em>k</em></sub> = <em>B</em></span>
+in <span class="math inline"><em>G</em><sub><em>F</em></sub></span>.
+Then <span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em><sub>0</sub></span>
+and each edge <span
+class="math inline"><em>A</em><sub><em>i</em></sub> → <em>A</em><sub><em>i</em> + 1</sub> ∈ <em>F</em></span>
+puts <span
+class="math inline"><em>A</em><sub><em>i</em> + 1</sub></span> into
+<span class="math inline"><em>X</em><sub><em>i</em> + 1</sub></span>, so
+<span
+class="math inline"><em>B</em> ∈ <em>X</em><sub><em>k</em></sub> ⊆ <em>X</em><sup>+</sup></span>.</p>
+<p>(⊆) Induct on the smallest <span
+class="math inline"><em>i</em></span> with <span
+class="math inline"><em>B</em> ∈ <em>X</em><sub><em>i</em></sub></span>.
+If <span class="math inline"><em>i</em> = 0</span>, then <span
+class="math inline"><em>B</em> ∈ <em>X</em></span> and is reachable from
+itself by the empty path. If <span
+class="math inline"><em>i</em> ≥ 1</span>, there is a witness <span
+class="math inline"><em>A</em> → <em>B</em> ∈ <em>F</em></span> with
+<span
+class="math inline"><em>A</em> ∈ <em>X</em><sub><em>i</em> − 1</sub></span>;
+by the inductive hypothesis <span
+class="math inline"><em>A</em> ∈ reach(<em>A</em><sub>0</sub>)</span>
+for some <span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span>, and
+appending the edge <span
+class="math inline"><em>A</em> → <em>B</em></span> gives <span
+class="math inline"><em>B</em> ∈ reach(<em>A</em><sub>0</sub>)</span>.
+<span class="math inline">◼</span></p>
+<h2 id="the-attribute-level-bcnf-criterion">The attribute-level BCNF
+criterion</h2>
+<p>The main result, stated directly at the sub-relation level:</p>
+<p><strong>Theorem.</strong> For singleton <span
+class="math inline"><em>F</em></span> and any <span
+class="math inline"><em>S</em> ⊆ 𝒰</span>, <span
+class="math display"><em>S</em> is in BCNF  ⇔  for every
+<em>A</em> ∈ <em>S</em>, reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}.</span></p>
+<p>Intuition: in the FD graph, each attribute either reaches nothing new
+in <span class="math inline"><em>S</em></span> (no outgoing derivation
+to worry about) or reaches all of <span
+class="math inline"><em>S</em></span> (its LHS is a superkey, so any FD
+it gets into does not violate BCNF). Anything in between is exactly a
+BCNF violation.</p>
+<p>Because attributes that are not the LHS of any FD in <span
+class="math inline"><em>F</em></span> have <span
+class="math inline">reach(<em>A</em>) = {<em>A</em>}</span> and
+trivially pass, the check only needs to inspect LHS attributes of input
+FDs — the same finite list <span class="math inline"><em>F</em></span>
+gives you, at every recursion level.</p>
+<p><em>Proof.</em></p>
+<p><strong>(⇒)</strong> Suppose <span
+class="math inline"><em>S</em></span> is in BCNF. Fix <span
+class="math inline"><em>A</em> ∈ <em>S</em></span>. If <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em> = {<em>A</em>}</span>,
+we are done. Otherwise pick <span
+class="math inline"><em>B</em> ∈ reach(<em>A</em>) ∩ <em>S</em></span>
+with <span class="math inline"><em>B</em> ≠ <em>A</em></span>. By Lemma
+1, <span class="math inline"><em>B</em> ∈ <em>A</em><sup>+</sup></span>,
+so <span class="math inline">{<em>A</em>} → {<em>B</em>}</span> is a
+nontrivial FD in <span
+class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>.
+BCNF forces <span class="math inline"><em>A</em></span> to be a superkey
+of <span class="math inline"><em>S</em></span>, i.e., <span
+class="math inline"><em>A</em><sup>+</sup> ⊇ <em>S</em></span>, which by
+Lemma 1 gives <span
+class="math inline">reach(<em>A</em>) ⊇ <em>S</em></span>, so <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em> = <em>S</em></span>.</p>
+<p><strong>(⇐)</strong> Suppose every <span
+class="math inline"><em>A</em> ∈ <em>S</em></span> has <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}</span>.
+Let <span class="math inline"><em>X</em> → <em>Y</em></span> be a
+nontrivial FD in <span
+class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>,
+so <span class="math inline"><em>X</em>, <em>Y</em> ⊆ <em>S</em></span>
+and <span class="math inline"><em>Y</em> ⊈ <em>X</em></span>. Pick <span
+class="math inline"><em>B</em> ∈ <em>Y</em> \ <em>X</em></span>; then
+<span
+class="math inline"><em>B</em> ∈ <em>X</em><sup>+</sup> ∩ <em>S</em></span>.
+By Lemma 1, <span
+class="math inline"><em>B</em> ∈ reach(<em>A</em><sub>0</sub>)</span>
+for some <span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em></span>. Since
+<span
+class="math inline"><em>A</em><sub>0</sub> ∈ <em>X</em> ⊆ <em>S</em></span>
+and <span class="math inline"><em>B</em> ∈ <em>S</em></span> with <span
+class="math inline"><em>B</em> ≠ <em>A</em><sub>0</sub></span> (as <span
+class="math inline"><em>B</em> ∉ <em>X</em></span>), <span
+class="math inline">reach(<em>A</em><sub>0</sub>) ∩ <em>S</em> ∋ <em>B</em> ≠ <em>A</em><sub>0</sub></span>,
+so it is not <span class="math inline">{<em>A</em><sub>0</sub>}</span>.
+By hypothesis it must equal <span class="math inline"><em>S</em></span>.
+Thus <span
+class="math inline"><em>X</em><sup>+</sup> ⊇ reach(<em>A</em><sub>0</sub>) ⊇ <em>S</em></span>,
+making <span class="math inline"><em>X</em></span> a superkey of <span
+class="math inline"><em>S</em></span>.</p>
+<p>Hence every nontrivial FD in <span
+class="math inline"><em>π</em><sub><em>S</em></sub>(<em>F</em><sup>+</sup>)</span>
+has a superkey LHS: <span class="math inline"><em>S</em></span> is in
+BCNF. <span class="math inline">◼</span></p>
+<h2 id="what-this-means-for-decomposition">What this means for
+decomposition</h2>
+<p>The theorem is a closed statement about any attribute subset <span
+class="math inline"><em>S</em></span> — it makes no reference to a
+decomposition history, which is why it works recursively at every step.
+Each BCNF decomposition step looks like:</p>
+<ol type="1">
+<li>Current sub-relation has attribute set <span
+class="math inline"><em>S</em></span> (initially <span
+class="math inline">𝒰</span>).</li>
+<li>For each attribute <span
+class="math inline"><em>A</em> ∈ <em>S</em></span> that is the LHS of
+some FD in <span class="math inline"><em>F</em></span>, compute <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em></span> once
+(linear-time BFS/DFS on <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span>, then
+intersect with <span class="math inline"><em>S</em></span>).</li>
+<li>If every such <span class="math inline"><em>A</em></span> has <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em> ∈ {{<em>A</em>}, <em>S</em>}</span>,
+the theorem says <span class="math inline"><em>S</em></span> is in BCNF
+— emit it and stop this branch.</li>
+<li>Otherwise pick any violating <span
+class="math inline"><em>A</em></span>, i.e., one with <span
+class="math inline">{<em>A</em>} ⊊ reach(<em>A</em>) ∩ <em>S</em> ⊊ <em>S</em></span>.
+Split <span class="math inline"><em>S</em></span> into <span
+class="math display"><em>S</em><sub>1</sub> = reach(<em>A</em>) ∩ <em>S</em>   and   <em>S</em><sub>2</sub> = (<em>S</em> \ reach(<em>A</em>)) ∪ {<em>A</em>},</span>
+and recurse on each. (<span
+class="math inline"><em>S</em><sub>1</sub></span> is the BCNF-style
+splitter “<span class="math inline"><em>A</em></span> together with its
+closure”; <span class="math inline"><em>S</em><sub>2</sub></span> keeps
+<span class="math inline"><em>A</em></span> as the attribute linking the
+two halves.)</li>
+</ol>
+<p>The whole procedure reads the graph <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> once. No
+projection of FDs, no recomputation of closures in a new FD system, no
+enumeration of subsets, and no acyclicity assumption.</p>
+<h2 id="remark-reconciling-with-the-fd-centric-view">Remark: reconciling
+with the FD-centric view</h2>
+<p>The FD-centric version of the theorem on the top-level relation —
+“<span class="math inline"><em>R</em></span> is in BCNF iff every <span
+class="math inline"><em>A</em> → <em>B</em> ∈ <em>F</em></span> has
+<span class="math inline"><em>A</em></span> as a superkey” — is the
+special case <span class="math inline"><em>S</em> = 𝒰</span>: for <span
+class="math inline"><em>A</em></span> that is an LHS of some FD, <span
+class="math inline">reach(<em>A</em>) ⊋ {<em>A</em>}</span>, so the
+attribute-level check reduces to <span
+class="math inline">reach(<em>A</em>) = 𝒰</span>, i.e., <span
+class="math inline"><em>A</em></span> is a superkey. Attributes that
+appear on no LHS trivially pass. The attribute-level statement is what
+generalizes cleanly to sub-relations, because <span
+class="math inline">reach(<em>A</em>) ∩ <em>S</em></span> is read
+directly from the original graph <span
+class="math inline"><em>G</em><sub><em>F</em></sub></span> rather than
+from a projected FD set.</p>
+</body>
+</html>
